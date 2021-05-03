@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
+import 'package:kakebo/src/utils/utils.dart';
 import 'package:provider/provider.dart';
 
 import 'package:kakebo/src/models/ingresos_egresos_model.dart';
 import 'package:kakebo/src/providers/movimientos_info.dart';
-import 'package:kakebo/src/utils/formatter_utils.dart';
 
 class EgresosPage extends StatefulWidget {
   static String name = 'egresos';
@@ -17,6 +18,8 @@ class EgresosPage extends StatefulWidget {
 class _EgresosPageState extends State<EgresosPage> {
   String _opcionSeleccionada = 'Indispensable';
   String _fecha = '';
+  final montoTxt = TextEditingController();
+  final concepto = TextEditingController();
 
   List<String> _categorias = [
     'Indispensable',
@@ -35,7 +38,6 @@ class _EgresosPageState extends State<EgresosPage> {
         objIngresos.categoria == null ? _categorias[0] : objIngresos.categoria;
 
     final movimientosInfo = Provider.of<MovimientosInfo>(context);
-
     return SafeArea(
         child: Scaffold(
             appBar: AppBar(
@@ -63,7 +65,7 @@ class _EgresosPageState extends State<EgresosPage> {
   }
 
   List<DropdownMenuItem<String>> getOpcionesDropdown() {
-    List<DropdownMenuItem<String>> lista = new List();
+    List<DropdownMenuItem<String>> lista = [];
 
     _categorias.forEach((categoria) {
       lista.add(DropdownMenuItem(
@@ -96,7 +98,7 @@ class _EgresosPageState extends State<EgresosPage> {
                 items: getOpcionesDropdown(),
                 onChanged: (opt) {
                   setState(() {
-                    _opcionSeleccionada = opt;
+                    _opcionSeleccionada = opt.toString();
                   });
                 },
               ),
@@ -109,6 +111,7 @@ class _EgresosPageState extends State<EgresosPage> {
 
   Widget _ingresarMonto() {
     return TextField(
+      controller: montoTxt,
       textCapitalization: TextCapitalization.sentences,
       decoration: InputDecoration(
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(20.0)),
@@ -117,13 +120,25 @@ class _EgresosPageState extends State<EgresosPage> {
           icon: Icon(Icons.attach_money),
           errorText: validMonto ? null : "Favor de ingresar monto"),
       keyboardType: TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: <TextInputFormatter>[
-        DecimalTextInputFormatter(decimalRange: 2)
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r"[0-9.]")),
+        TextInputFormatter.withFunction((oldValue, newValue) {
+          try {
+            final text = newValue.text;
+            if (text.isNotEmpty) double.parse(text);
+            return newValue;
+          } catch (e) {}
+          return oldValue;
+        }),
       ],
       onChanged: (valor) {
         setState(() {
-          objIngresos.monto = valor == "" ? null : double.parse(valor);
-          validMonto = true;
+          try {
+            objIngresos.monto = valor == "" ? null : double.parse(valor);
+            validMonto = true;
+          } catch (e) {
+            objIngresos.monto = objIngresos.monto;
+          }
         });
       },
     );
@@ -131,6 +146,7 @@ class _EgresosPageState extends State<EgresosPage> {
 
   Widget _ingresarConcepto() {
     return TextField(
+      controller: concepto,
       textCapitalization: TextCapitalization.sentences,
       decoration: InputDecoration(
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(20.0)),
@@ -202,11 +218,24 @@ class _EgresosPageState extends State<EgresosPage> {
         if (!_validarCamposVacios(objIngresos)) {
           objIngresos.tipo = "-";
           movimientosInfo.agregarMoviento(objIngresos);
+          resetFields();
+          Utils.showSnackBar(context, 'Registro guardado con éxito.');
         }
       },
       child: Text("Guardar", style: style),
     );
   }
+
+  // void saveMessage() {
+  //   Fluttertoast.showToast(
+  //       msg: "Registro guardado con éxito.",
+  //       toastLength: Toast.LENGTH_SHORT,
+  //       gravity: ToastGravity.BOTTOM,
+  //       timeInSecForIosWeb: 1,
+  //       backgroundColor: Colors.green[200],
+  //       textColor: Colors.white,
+  //       fontSize: 16.0);
+  // }
 
   bool _validarCamposVacios(IngresosEgresosModel objIngresos) {
     bool bAllOk = false;
@@ -237,5 +266,12 @@ class _EgresosPageState extends State<EgresosPage> {
     }
 
     return bAllOk;
+  }
+
+  resetFields() {
+    montoTxt.clear();
+    concepto.clear();
+    _inputFieldDateController.clear();
+    objIngresos = IngresosEgresosModel();
   }
 }

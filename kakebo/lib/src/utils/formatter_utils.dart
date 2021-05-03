@@ -2,8 +2,8 @@ import 'package:flutter/services.dart';
 import 'dart:math' as math;
 
 class DecimalTextInputFormatter extends TextInputFormatter {
-  DecimalTextInputFormatter({this.decimalRange})
-      : assert(decimalRange == null || decimalRange > 0);
+  DecimalTextInputFormatter({this.decimalRange = 0})
+      : assert(decimalRange == 0 || decimalRange > 0);
 
   final int decimalRange;
 
@@ -15,7 +15,7 @@ class DecimalTextInputFormatter extends TextInputFormatter {
     TextSelection newSelection = newValue.selection;
     String truncated = newValue.text;
 
-    if (decimalRange != null) {
+    if (decimalRange != 0) {
       String value = newValue.text;
 
       if (value.contains(".") &&

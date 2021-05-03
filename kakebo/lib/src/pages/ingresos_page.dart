@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:kakebo/src/models/ingresos_egresos_model.dart';
 import 'package:kakebo/src/providers/movimientos_info.dart';
-import 'package:kakebo/src/utils/formatter_utils.dart';
+import 'package:kakebo/src/utils/utils.dart';
 import 'package:provider/provider.dart';
 
 class IngresosPage extends StatefulWidget {
@@ -19,7 +19,8 @@ class _IngresosPageState extends State<IngresosPage> {
 
   List<String> _categorias = ['Sueldo', 'Bono', 'Venta', 'Comisión', 'Otro'];
   bool validMonto = true, validConcepto = true, validFecha = true;
-
+  final montoTxt = TextEditingController();
+  final concepto = TextEditingController();
   TextEditingController _inputFieldDateController = new TextEditingController();
 
   IngresosEgresosModel objIngresos = IngresosEgresosModel();
@@ -58,7 +59,7 @@ class _IngresosPageState extends State<IngresosPage> {
   }
 
   List<DropdownMenuItem<String>> getOpcionesDropdown() {
-    List<DropdownMenuItem<String>> lista = new List();
+    List<DropdownMenuItem<String>> lista = [];
 
     _categorias.forEach((categoria) {
       lista.add(DropdownMenuItem(
@@ -91,7 +92,7 @@ class _IngresosPageState extends State<IngresosPage> {
                 items: getOpcionesDropdown(),
                 onChanged: (opt) {
                   setState(() {
-                    objIngresos.categoria = opt;
+                    objIngresos.categoria = opt.toString();
                   });
                 },
               ),
@@ -104,6 +105,7 @@ class _IngresosPageState extends State<IngresosPage> {
 
   Widget _ingresarMonto() {
     return TextField(
+      controller: montoTxt,
       textCapitalization: TextCapitalization.sentences,
       decoration: InputDecoration(
           border: OutlineInputBorder(
@@ -113,14 +115,28 @@ class _IngresosPageState extends State<IngresosPage> {
           helperText: 'Agregar cantidad de dinero ingresada',
           icon: Icon(Icons.attach_money),
           errorText: validMonto ? null : "Favor de ingresar monto"),
-      keyboardType: TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: <TextInputFormatter>[
-        DecimalTextInputFormatter(decimalRange: 2)
+      keyboardType: TextInputType.numberWithOptions(
+        decimal: true,
+      ),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r"[0-9.]")),
+        TextInputFormatter.withFunction((oldValue, newValue) {
+          try {
+            final text = newValue.text;
+            if (text.isNotEmpty) double.parse(text);
+            return newValue;
+          } catch (e) {}
+          return oldValue;
+        }),
       ],
       onChanged: (valor) {
         setState(() {
-          objIngresos.monto = valor == "" ? null : double.parse(valor);
-          validMonto = true;
+          try {
+            objIngresos.monto = valor == "" ? null : double.parse(valor);
+            validMonto = true;
+          } catch (e) {
+            objIngresos.monto = objIngresos.monto;
+          }
         });
       },
     );
@@ -128,6 +144,7 @@ class _IngresosPageState extends State<IngresosPage> {
 
   Widget _ingresarConcepto() {
     return TextField(
+      controller: concepto,
       textCapitalization: TextCapitalization.sentences,
       decoration: InputDecoration(
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(20.0)),
@@ -200,25 +217,12 @@ class _IngresosPageState extends State<IngresosPage> {
         if (!_validarCamposVacios(objIngresos)) {
           objIngresos.tipo = "+";
           movimientosInfo.agregarMoviento(objIngresos);
+          resetFields();
+          Utils.showSnackBar(context, 'Registro guardado con éxito.');
         }
       },
       child: Text("Guardar", style: style),
     );
-    // ButtonTheme(
-    //     minWidth: 200.0,
-    //     child: RaisedButton(
-    //         padding: EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
-    //         child: Text("Guardar", style: style),
-    //         color: Colors.orange,
-    //         shape: new RoundedRectangleBorder(
-    //             borderRadius: new BorderRadius.circular(18.0),
-    //             side: BorderSide(color: Color(0xff1a237e))),
-    //         onPressed: () {
-    //           if (!_validarCamposVacios(objIngresos)) {
-    //             objIngresos.tipo = "+";
-    //             movimientosInfo.agregarMoviento(objIngresos);
-    //           }
-    //         }));
   }
 
   bool _validarCamposVacios(IngresosEgresosModel objIngresos) {
@@ -250,5 +254,12 @@ class _IngresosPageState extends State<IngresosPage> {
     }
 
     return bAllOk;
+  }
+
+  resetFields() {
+    montoTxt.clear();
+    concepto.clear();
+    _inputFieldDateController.clear();
+    objIngresos = IngresosEgresosModel();
   }
 }
